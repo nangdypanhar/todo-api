@@ -1,14 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { AppModule, ObserveInstrument } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
   });
+  app.setGlobalPrefix('api');
+  app.use(cookieParser());
 
   const config = new DocumentBuilder()
-    .setTitle('nest-course')
+    .setTitle('todo-api')
     .setDescription('API documentation')
     .setVersion('1.0')
     .build();

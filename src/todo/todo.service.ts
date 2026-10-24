@@ -12,31 +12,31 @@ export class TodoService {
     private readonly todoRepository: Repository<Todo>,
   ) {}
 
-  create(createTodoDto: CreateTodoDto): Promise<Todo> {
-    const todo = this.todoRepository.create(createTodoDto);
+  create(createTodoDto: CreateTodoDto, userId: number): Promise<Todo> {
+    const todo = this.todoRepository.create({ ...createTodoDto, userId });
     return this.todoRepository.save(todo);
   }
 
-  findAll(): Promise<Todo[]> {
-    return this.todoRepository.find();
+  findAll(userId: number): Promise<Todo[]> {
+    return this.todoRepository.find({ where: { userId } });
   }
 
-  async findOne(id: number): Promise<Todo> {
-    const todo = await this.todoRepository.findOneBy({ id });
+  async findOne(id: number, userId: number): Promise<Todo> {
+    const todo = await this.todoRepository.findOneBy({ id, userId });
     if (!todo) {
       throw new NotFoundException(`Todo #${id} not found`);
     }
     return todo;
   }
 
-  async update(id: number, updateTodoDto: UpdateTodoDto): Promise<Todo> {
-    const todo = await this.findOne(id);
-    Object.assign(todo, updateTodoDto);
+  async update(id: number, updateTodoDto: UpdateTodoDto, userId: number): Promise<Todo> {
+    const todo = await this.findOne(id, userId);
+    Object.assign(todo, { ...updateTodoDto, userId });
     return this.todoRepository.save(todo);
   }
 
-  async remove(id: number): Promise<Todo> {
-    const todo = await this.findOne(id);
+  async remove(id: number, userId: number): Promise<Todo> {
+    const todo = await this.findOne(id, userId);
     return this.todoRepository.remove(todo);
   }
 }
