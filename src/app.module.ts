@@ -33,7 +33,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ObserveModule.forRoot({
       appKey: 'YOUR_APP_KEY',
       appSecret: 'YOUR_APP_SECRET',
-      serviceId: 'nest-course',
+      serviceId: 'todo-api',
     }),
     TodoModule,
     UsersModule,

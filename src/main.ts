@@ -11,7 +11,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   const config = new DocumentBuilder()
-    .setTitle('nest-course')
+    .setTitle('todo-api')
     .setDescription('API documentation')
     .setVersion('1.0')
     .build();

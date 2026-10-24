@@ -57,15 +57,7 @@ export class AuthService {
     if (!refreshToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
-    let payload: { sub: number; type?: string };
-    try {
-      payload = await this.jwtService.verifyAsync(refreshToken, { secret: this.refreshSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-    if (payload.type !== 'refresh') {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+    const payload = await this.verifyRefreshToken(refreshToken);
     let user: User;
     try {
       user = await this.usersService.findOne(payload.sub);
@@ -78,5 +70,18 @@ export class AuthService {
   logout(res: Response): void {
     const { maxAge: _maxAge, ...clearOptions } = refreshCookieOptions;
     res.clearCookie('refreshToken', clearOptions);
+  }
+
+  private async verifyRefreshToken(token: string): Promise<{ sub: number; type?: string }> {
+    let payload: { sub: number; type?: string };
+    try {
+      payload = await this.jwtService.verifyAsync(token, { secret: this.refreshSecret });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    return payload;
   }
 }
