@@ -5,6 +5,10 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { TodoModule } from './todo/todo.module.js';
+import { UsersModule } from './users/users.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth-guard.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -32,8 +36,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'nest-course',
     }),
     TodoModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}
