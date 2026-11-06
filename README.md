@@ -1,114 +1,163 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# todo-api
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS todo API with PostgreSQL, JWT authentication (access + refresh tokens), and per-user todo ownership.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Node.js 20 or newer
+- npm
+- Docker (for PostgreSQL)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## 1. Install dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+## 2. Start PostgreSQL
+
+The app expects a PostgreSQL 16 database with the user and database names in `.env`. You can run it with Docker:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker run -d --name nest-postgres \
+  -e POSTGRES_USER=nestuser \
+  -e POSTGRES_PASSWORD=<your-password> \
+  -e POSTGRES_DB=todo-db \
+  -p 5432:5432 \
+  postgres:16
 ```
 
-## Run tests
+If the container already exists, start it with `docker start nest-postgres`.
+
+## 3. Configure environment variables
+
+Create a `.env` file in the project root (it is gitignored):
+
+```dotenv
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=nestuser
+DB_PASSWORD=<your-password>
+DB_DATABASE=todo-db
+
+# Signs both access and refresh tokens. Generate one with:
+#   openssl rand -base64 32
+JWT_SECRET=<random-secret>
+```
+
+## 4. Run database migrations
+
+The schema is managed by migrations (`synchronize` is off):
+
+```bash
+npm run typeorm -- migration:run -d src/data-source.ts
+```
+
+To roll back the last migration:
+
+```bash
+npm run typeorm -- migration:revert -d src/data-source.ts
+```
+
+## 5. Start the app
+
+```bash
+# development (watch mode)
+npm run start:dev
+
+# production build
+npm run build
+npm run start:prod
+```
+
+The API listens on port `3000` by default. Set `PORT` to change it.
+
+- API base URL: `http://localhost:3000/api`
+- Swagger UI: `http://localhost:3000/api`
+
+> **Note:** `src/app.module.ts` contains placeholder `ObserveModule` keys (`YOUR_APP_KEY` / `YOUR_APP_SECRET`). Replace them with your own values from https://observe.nestjs.com, or remove the module if you don't use it.
+
+## Authentication
+
+| Method | Route | Auth | Description |
+| ------ | ----- | ---- | ----------- |
+| POST | `/api/auth/signup` | public | Create an account. Returns `409` if the email is taken. |
+| POST | `/api/auth/login` | public | Returns `{ accessToken }` and sets the `refreshToken` cookie. |
+| POST | `/api/auth/refresh` | public (cookie) | Reads the `refreshToken` cookie and returns a new `{ accessToken }`. Also rotates the cookie. |
+| POST | `/api/auth/logout` | public | Clears the `refreshToken` cookie. |
+| GET | `/api/auth/me` | bearer | Returns the logged-in user. |
+
+- **Access token:** valid for 15 minutes. Send it as `Authorization: Bearer <accessToken>`.
+- **Refresh token:** valid for 7 days. It is stored in an httpOnly cookie scoped to `/api/auth`, so JavaScript can't read it.
+- Logout only clears the cookie. A refresh token copied before logout stays valid until it expires.
+
+All other routes require a bearer access token.
+
+## Todos
+
+Every todo belongs to the user who created it. Users only see and change their own todos. Another user's todo returns `404`.
+
+| Method | Route | Description |
+| ------ | ----- | ----------- |
+| POST | `/api/todo` | Create a todo for the current user |
+| GET | `/api/todo` | List the current user's todos |
+| GET | `/api/todo/:id` | Get one of the current user's todos |
+| PATCH | `/api/todo/:id` | Update one of the current user's todos |
+| DELETE | `/api/todo/:id` | Delete one of the current user's todos |
+
+Todo body: `{ "title": "Learn NestJS", "status": "open", "starred": false }`
+
+## Testing the API with Swagger
+
+There is no UI yet, so use Swagger to try the endpoints: `http://localhost:3000/api`
+
+1. Call `POST /api/auth/signup` to create an account.
+2. Call `POST /api/auth/login` and copy `accessToken` from the response.
+3. Use the todo and `/api/auth/me` endpoints with that token.
+4. Call `POST /api/auth/refresh` to get a new access token after 15 minutes. It uses the `refreshToken` cookie that login set.
+5. Call `POST /api/auth/logout` to clear the cookie.
+
+## Quick try with curl
+
+```bash
+# sign up
+curl -X POST http://localhost:3000/api/auth/signup \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Ada","email":"ada@example.com","password":"password123"}'
+
+# log in: saves the refresh cookie to cookies.txt and prints the access token
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ada@example.com","password":"password123"}'
+
+# create a todo
+curl -X POST http://localhost:3000/api/todo \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{"title":"Learn NestJS","status":"open","starred":false}'
+
+# get a new access token using the saved cookie
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/refresh
+
+# log out
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout
+```
+
+## Tests
 
 ```bash
 # unit tests
-$ npm run test
+npm run test
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# coverage
+npm run test:cov
 ```
 
-## Deployment
+`tsc` reports `Cannot find module 'supertest/types'` in `test/app.e2e-spec.ts`, so the end-to-end file needs its `supertest` types added before it type-checks.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Lint and format
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run lint
+npm run format
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
