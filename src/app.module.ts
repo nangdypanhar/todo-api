@@ -38,6 +38,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
           host: config.get<string>('REDIS_HOST', 'localhost'),
           port: Number(config.get('REDIS_PORT', 6379)),
         },
+        prefix: config.get<string>('BULLMQ_PREFIX', 'bull'),
       }),
     }),
     TodoModule,
