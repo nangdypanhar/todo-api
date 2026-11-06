@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TodoController } from './todo.controller.js';
 import { TodoService } from './todo.service.js';
 import { Todo } from './entities/todo.entity.js';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 describe('TodoController', () => {
   let controller: TodoController;
@@ -13,6 +14,7 @@ describe('TodoController', () => {
       providers: [
         TodoService,
         { provide: getRepositoryToken(Todo), useValue: {} },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
       ],
     }).compile();
 

@@ -16,18 +16,13 @@ npm install
 
 ## 2. Start PostgreSQL
 
-The app expects a PostgreSQL 16 database with the user and database names in `.env`. You can run it with Docker:
+The app expects a PostgreSQL 16 database with the user and database names in `.env`. Create the `.env` file first (see step 3), then start the database with Docker Compose. It reads `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` and `DB_PORT` from the same `.env` file:
 
 ```bash
-docker run -d --name nest-postgres \
-  -e POSTGRES_USER=nestuser \
-  -e POSTGRES_PASSWORD=<your-password> \
-  -e POSTGRES_DB=todo-db \
-  -p 5432:5432 \
-  postgres:16
+docker compose up -d
 ```
 
-If the container already exists, start it with `docker start nest-postgres`.
+Data is kept in the `postgres-data` volume. To stop the database run `docker compose down`. To stop it and delete its data, run `docker compose down -v`.
 
 ## 3. Configure environment variables
 
