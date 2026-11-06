@@ -14,15 +14,23 @@ A NestJS todo API with PostgreSQL, JWT authentication (access + refresh tokens),
 npm install
 ```
 
-## 2. Start PostgreSQL
+## 2. Start PostgreSQL and Redis
 
-The app expects a PostgreSQL 16 database with the user and database names in `.env`. Create the `.env` file first (see step 3), then start the database with Docker Compose. It reads `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` and `DB_PORT` from the same `.env` file:
+The app expects a PostgreSQL 16 database and a Redis server, configured in `.env`. Create the `.env` file first (see step 3), then start only those two services with Docker Compose, so `npm run start:dev` can use port 3000:
 
 ```bash
-docker compose up -d
+docker compose up -d db redis
 ```
 
-Data is kept in the `postgres-data` volume. To stop the database run `docker compose down`. To stop it and delete its data, run `docker compose down -v`.
+Data is kept in the `postgres-data` and `redis-data` volumes. To stop everything run `docker compose down`. To stop it and delete its data, run `docker compose down -v`.
+
+### Or run the whole stack in Docker
+
+```bash
+docker compose up --build
+```
+
+This builds the API image, starts the database and Redis, runs pending migrations, and starts the API on port 3000 (set `API_PORT` to use another port). Stop `npm run start:dev` first, or both will want port 3000.
 
 ## 3. Configure environment variables
 
